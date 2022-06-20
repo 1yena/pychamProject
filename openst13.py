@@ -17,10 +17,3 @@ plt.imshow(image)
 plt.show()
 
 
-
-
-
-
-
-
-

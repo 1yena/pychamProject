@@ -1,11 +1,5 @@
-
 import cv2 as cv
 import numpy as np
-import cv2
-
-
-# 웹캠에서 클릭하는 색깔 추출
-
 
 
 hsv = 0
@@ -17,8 +11,11 @@ lower_blue3 = 0
 upper_blue3 = 0
 
 
+def nothing(x):
+    pass
+
 def mouse_callback(event, x, y, flags, param):
-    global hsv, lower_blue1, upper_blue1, lower_blue2, upper_blue2, lower_blue3, upper_blue3
+    global hsv, lower_blue1, upper_blue1, lower_blue2, upper_blue2, lower_blue3, upper_blue3, threshold
 
     # 마우스 왼쪽 버튼 누를시 위치에 있는 픽셀값을 읽어와서 HSV로 변환합니다.
     if event == cv.EVENT_LBUTTONDOWN:
@@ -29,38 +26,39 @@ def mouse_callback(event, x, y, flags, param):
         hsv = cv.cvtColor(one_pixel, cv.COLOR_BGR2HSV)
         hsv = hsv[0][0]
 
+        threshold = cv.getTrackbarPos('threshold', 'img_result')
         # HSV 색공간에서 마우스 클릭으로 얻은 픽셀값과 유사한 필셀값의 범위를 정합니다.
         if hsv[0] < 10:
             print("case1")
-            lower_blue1 = np.array([hsv[0]-10+180, 30, 30])
+            lower_blue1 = np.array([hsv[0]-10+180, threshold, threshold])
             upper_blue1 = np.array([180, 255, 255])
-            lower_blue2 = np.array([0, 30, 30])
+            lower_blue2 = np.array([0, threshold, threshold])
             upper_blue2 = np.array([hsv[0], 255, 255])
-            lower_blue3 = np.array([hsv[0], 30, 30])
+            lower_blue3 = np.array([hsv[0], threshold, threshold])
             upper_blue3 = np.array([hsv[0]+10, 255, 255])
-            # print(i-10+180, 180, 0, i)
-            # print(i, i+10)
+            #     print(i-10+180, 180, 0, i)
+            #     print(i, i+10)
 
         elif hsv[0] > 170:
             print("case2")
-            lower_blue1 = np.array([hsv[0], 30, 30])
+            lower_blue1 = np.array([hsv[0], threshold, threshold])
             upper_blue1 = np.array([180, 255, 255])
-            lower_blue2 = np.array([0, 30, 30])
+            lower_blue2 = np.array([0, threshold, threshold])
             upper_blue2 = np.array([hsv[0]+10-180, 255, 255])
-            lower_blue3 = np.array([hsv[0]-10, 30, 30])
+            lower_blue3 = np.array([hsv[0]-10, threshold, threshold])
             upper_blue3 = np.array([hsv[0], 255, 255])
-            # print(i, 180, 0, i+10-180)
-            # print(i-10, i)
+            #     print(i, 180, 0, i+10-180)
+            #     print(i-10, i)
         else:
             print("case3")
-            lower_blue1 = np.array([hsv[0], 30, 30])
+            lower_blue1 = np.array([hsv[0], threshold, threshold])
             upper_blue1 = np.array([hsv[0]+10, 255, 255])
-            lower_blue2 = np.array([hsv[0]-10, 30, 30])
+            lower_blue2 = np.array([hsv[0]-10, threshold, threshold])
             upper_blue2 = np.array([hsv[0], 255, 255])
-            lower_blue3 = np.array([hsv[0]-10, 30, 30])
+            lower_blue3 = np.array([hsv[0]-10, threshold, threshold])
             upper_blue3 = np.array([hsv[0], 255, 255])
-            # print(i, i+10)
-            # print(i-10, i)
+            #     print(i, i+10)
+            #     print(i-10, i)
 
         print(hsv[0])
         print("@1", lower_blue1, "~", upper_blue1)
@@ -71,15 +69,15 @@ def mouse_callback(event, x, y, flags, param):
 cv.namedWindow('img_color')
 cv.setMouseCallback('img_color', mouse_callback)
 
-# 가시광카메라 불러오기 (0번이 가시광 / 1번이 열화상)
-# 아래 둘 다 사용 가능 (젯슨나노 연결되면 확인해볼 것)
-cap = cv.VideoCapture(0)
-# cap = cv2.VideoCapture(0)
+cv.namedWindow('img_result')
+cv.createTrackbar('threshold', 'img_result', 0, 255, nothing)
+cv.setTrackbarPos('threshold', 'img_result', 30)
 
+cap = cv.VideoCapture(0)
 
 while(True):
     # img_color = cv.imread('2.jpg')
-    ret, img_color = cap.read()
+    ret,img_color = cap.read()
     height, width = img_color.shape[:2]
     img_color = cv.resize(img_color, (width, height), interpolation=cv.INTER_AREA)
 
@@ -93,9 +91,17 @@ while(True):
     img_mask = img_mask1 | img_mask2 | img_mask3
 
 
+    kernel = np.ones((11,11), np.uint8)
+    img_mask = cv.morphologyEx(img_mask, cv.MORPH_OPEN, kernel)
+    img_mask = cv.morphologyEx(img_mask, cv.MORPH_CLOSE, kernel)
+
     # 마스크 이미지로 원본 이미지에서 범위값에 해당되는 영상 부분을 획득합니다.
     img_result = cv.bitwise_and(img_color, img_color, mask=img_mask)
 
+
+    numOfLabels, img_label, stats, centroids = cv.connectedComponentsWithStats(img_mask)
+
+    # for idx, ce
 
     cv.imshow('img_color', img_color)
     cv.imshow('img_mask', img_mask)
